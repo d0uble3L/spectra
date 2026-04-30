@@ -1,0 +1,25 @@
+services:
+  spectra:
+    build: .
+    image: spectra:latest
+    env_file:
+      - .env
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./scans:/app/scans       # mount scanner output files here
+      - ./reports:/app/reports   # reports land here
+    stdin_open: true
+    tty: true
+
+  # Convenience: run a one-shot analysis
+  # Usage: docker compose run --rm analyze scans/trivy.json
+  analyze:
+    build: .
+    image: spectra:latest
+    env_file:
+      - .env
+    volumes:
+      - ./scans:/app/scans
+      - ./reports:/app/reports
+    entrypoint: ["spectra", "analyze"]

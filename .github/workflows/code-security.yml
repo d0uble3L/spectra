@@ -40,10 +40,12 @@ jobs:
         run: semgrep --config auto --sarif --output semgrep.sarif .
         continue-on-error: true
 
-      # Guard upload so a missing file doesn't hard-fail the job (fixes: semgrep.sarif never generated)
+      # Guard upload so a missing file doesn't hard-fail the job (fixes: semgrep.sarif never generated).
+      # continue-on-error handles private repos without GitHub Advanced Security (issue #1).
       - name: Upload Semgrep results to GitHub Security tab
         if: hashFiles('semgrep.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
         with:
           sarif_file: semgrep.sarif
 

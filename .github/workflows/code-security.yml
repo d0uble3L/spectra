@@ -1,0 +1,82 @@
+name: Code Security (Semgrep + Spectra)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read          # fixes: semgrep telemetry permission warning
+  pull-requests: write   # needed for PR comment step
+
+jobs:
+  code-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Semgrep and Spectra
+        run: |
+          pip install semgrep
+          pip install git+https://github.com/d0uble3L/spectra.git
+
+      # Run Semgrep once for JSON (Spectra input) and once for SARIF (GitHub Security tab).
+      # Both steps use continue-on-error so a scan with findings doesn't abort the job.
+      - name: Run Semgrep scan (JSON)
+        id: semgrep_json
+        run: semgrep --config auto --json --output semgrep.json .
+        continue-on-error: true
+
+      - name: Run Semgrep scan (SARIF)
+        run: semgrep --config auto --sarif --output semgrep.sarif .
+        continue-on-error: true
+
+      # Guard upload so a missing file doesn't hard-fail the job (fixes: semgrep.sarif never generated)
+      - name: Upload Semgrep results to GitHub Security tab
+        if: hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: Run Spectra analysis
+        id: spectra
+        if: hashFiles('semgrep.json') != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: spectra analyze semgrep.json --format markdown --output code-security-report
+        continue-on-error: true
+
+      # Post the Spectra report as a PR comment when running on a pull request
+      - name: Comment Spectra report on PR
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.spectra.outcome == 'success' &&
+          hashFiles('code-security-report.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('code-security-report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Spectra Security Analysis\n\n${body}`
+            });
+
+      # Gate artifact upload on Spectra completing successfully (fixes: artifact never created)
+      - name: Upload code security report
+        if: steps.spectra.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-security-report
+          path: code-security-report.md

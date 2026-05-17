@@ -35,7 +35,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Spectra
-        run: pip install git+https://github.com/d0uble3L/spectra.git
+        run: pip install -e .
 
       - name: Build container image
         run: docker build -t spectra:ci .

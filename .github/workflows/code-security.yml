@@ -27,7 +27,7 @@ jobs:
       - name: Install Semgrep and Spectra
         run: |
           pip install semgrep
-          pip install git+https://github.com/d0uble3L/spectra.git
+          pip install -e .
 
       # Run Semgrep once for JSON (Spectra input) and once for SARIF (GitHub Security tab).
       # Both steps use continue-on-error so a scan with findings doesn't abort the job.

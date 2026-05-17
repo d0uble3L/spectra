@@ -63,6 +63,29 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
         continue-on-error: true
 
+      - name: Trivy scan summary
+        run: |
+          if [ "${{ steps.trivy_json.outcome }}" = "failure" ]; then
+            echo "::warning::Trivy found vulnerabilities (exit 1). Spectra will analyze them."
+          else
+            echo "::notice::Trivy scan clean — no CRITICAL/HIGH/MEDIUM findings."
+          fi
+          if [ -f trivy.json ]; then
+            echo "Trivy finding counts:"
+            python3 -c "
+          import json, sys
+          d = json.load(open('trivy.json'))
+          counts = {}
+          for r in d.get('Results', []):
+            for v in r.get('Vulnerabilities') or []:
+              s = v.get('Severity','UNKNOWN')
+              counts[s] = counts.get(s, 0) + 1
+          for sev in ['CRITICAL','HIGH','MEDIUM','LOW','UNKNOWN']:
+            if counts.get(sev):
+              print(f'  {sev}: {counts[sev]}')
+          "
+          fi
+
       - name: Upload Trivy results to GitHub Security tab
         if: hashFiles('trivy.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3

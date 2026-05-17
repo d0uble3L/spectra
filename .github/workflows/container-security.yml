@@ -1,4 +1,4 @@
-name: Container Security (Trivy + Spectra)
+name: container-scan
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Code Security (Semgrep + Spectra)
+name: sast
 
 on:
   push:

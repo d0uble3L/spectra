@@ -1,4 +1,4 @@
-FROM python:3.15-rc-alpine3.22
+FROM python:3.11-slim
 
 LABEL maintainer="SPECTRA Security"
 LABEL description="SPECTRA — AI-Powered Security Intelligence Platform"

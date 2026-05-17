@@ -10,7 +10,7 @@ load_dotenv()
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
@@ -112,3 +112,8 @@ async def get_report(report_id: str):
 _dist = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
 if os.path.isdir(_dist):
     app.mount("/", StaticFiles(directory=_dist, html=True), name="static")
+else:
+    # No built frontend — redirect root to interactive API docs
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/api/docs")

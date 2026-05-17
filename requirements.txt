@@ -5,3 +5,4 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
 pygments>=2.20.0 # not directly required, pinned by Snyk to avoid a vulnerability
+jaraco.context>=6.1.0 # not directly required, pinned to avoid CVE-2026-23949 path traversal

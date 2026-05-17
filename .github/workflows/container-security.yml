@@ -1,0 +1,126 @@
+name: Container Security (Trivy + Spectra)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "Dockerfile"
+      - "requirements.txt"
+      - "spectra/**"
+      - ".github/workflows/container-security.yml"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "requirements.txt"
+      - "spectra/**"
+      - ".github/workflows/container-security.yml"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  container-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Spectra
+        run: pip install -e .
+
+      - name: Build container image
+        run: docker build -t spectra:ci .
+
+      # Run Trivy twice — JSON feeds Spectra, SARIF goes to the Security tab.
+      # continue-on-error keeps the job alive when vulnerabilities are found.
+      - name: Run Trivy scan (JSON)
+        id: trivy_json
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: spectra:ci
+          format: json
+          output: trivy.json
+          exit-code: "1"
+          severity: CRITICAL,HIGH,MEDIUM
+        continue-on-error: true
+
+      - name: Run Trivy scan (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: spectra:ci
+          format: sarif
+          output: trivy.sarif
+          exit-code: "0"
+          severity: CRITICAL,HIGH,MEDIUM
+        continue-on-error: true
+
+      - name: Trivy scan summary
+        run: |
+          if [ "${{ steps.trivy_json.outcome }}" = "failure" ]; then
+            echo "::warning::Trivy found vulnerabilities (exit 1). Spectra will analyze them."
+          else
+            echo "::notice::Trivy scan clean — no CRITICAL/HIGH/MEDIUM findings."
+          fi
+          if [ -f trivy.json ]; then
+            echo "Trivy finding counts:"
+            python3 -c "
+          import json, sys
+          d = json.load(open('trivy.json'))
+          counts = {}
+          for r in d.get('Results', []):
+            for v in r.get('Vulnerabilities') or []:
+              s = v.get('Severity','UNKNOWN')
+              counts[s] = counts.get(s, 0) + 1
+          for sev in ['CRITICAL','HIGH','MEDIUM','LOW','UNKNOWN']:
+            if counts.get(sev):
+              print(f'  {sev}: {counts[sev]}')
+          "
+          fi
+
+      - name: Upload Trivy results to GitHub Security tab
+        if: hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+
+      - name: Run Spectra analysis
+        id: spectra
+        if: hashFiles('trivy.json') != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: spectra analyze trivy.json --format markdown --output container-security-report
+        continue-on-error: true
+
+      - name: Comment Spectra report on PR
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.spectra.outcome == 'success' &&
+          hashFiles('container-security-report.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('container-security-report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Spectra Container Security Analysis\n\n${body}`
+            });
+
+      - name: Upload container security report
+        if: steps.spectra.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-security-report
+          path: container-security-report.md

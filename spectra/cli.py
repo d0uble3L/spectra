@@ -139,8 +139,7 @@ def analyze_cmd(
     if fmt in ("markdown", "both"):
         md_text = render_markdown(report)
         if output:
-            suffix = ".md"
-            out_path = output.with_suffix(suffix) if fmt == "both" else output
+            out_path = output.with_suffix(".md")
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(md_text, encoding="utf-8")
             err_console.print(f"[green]✓[/green] Markdown report → [cyan]{out_path}[/cyan]")
@@ -150,8 +149,7 @@ def analyze_cmd(
     if fmt in ("json", "both"):
         json_text = render_json(report)
         if output:
-            suffix = ".json"
-            out_path = output.with_suffix(suffix) if fmt == "both" else output
+            out_path = output.with_suffix(".json")
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(json_text, encoding="utf-8")
             err_console.print(f"[green]✓[/green] JSON report    → [cyan]{out_path}[/cyan]")

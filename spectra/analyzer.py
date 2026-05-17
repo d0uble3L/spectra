@@ -195,7 +195,7 @@ def analyze(
 
     with client.messages.stream(
         model=model,
-        max_tokens=8192,
+        max_tokens=16000,
         thinking={"type": "adaptive"},
         output_config={"effort": "high"},
         system=[

@@ -23,3 +23,17 @@ services:
       - ./scans:/app/scans
       - ./reports:/app/reports
     entrypoint: ["spectra", "analyze"]
+
+  # Web UI + REST API
+  # Usage: docker compose up api
+  api:
+    build: .
+    image: spectra:latest
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./scans:/app/scans
+      - ./reports:/app/reports
+    entrypoint: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -34,6 +34,11 @@ htmlcov/
 reports/
 scans/
 
+# ─── Web / Node ───────────────────────────────────────────────────────────────
+web/node_modules/
+web/dist/
+web/.vite/
+
 # ─── OS / editor ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

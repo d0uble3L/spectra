@@ -1,9 +1,12 @@
-.PHONY: install test lint scan-code scan-container scan-all clean
+.PHONY: install install-api test lint scan-code scan-container scan-all dev api-dev web-dev clean
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
 install:
 	pip install -e ".[dev]"
+
+install-api:
+	pip install -e ".[api,dev]"
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 
@@ -31,8 +34,22 @@ scan-container:
 # Run both scans back-to-back
 scan-all: scan-code scan-container
 
+# ── Dev servers ───────────────────────────────────────────────────────────────
+
+# Start FastAPI backend (requires: make install-api)
+api-dev:
+	uvicorn api.main:app --reload --port 8000
+
+# Start React frontend dev server (requires: cd web && npm install)
+web-dev:
+	cd web && npm run dev
+
+# Start both concurrently (requires: npm install -g concurrently)
+dev:
+	concurrently "make api-dev" "make web-dev"
+
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
 clean:
 	rm -f semgrep.json semgrep.sarif trivy.json trivy.sarif
-	rm -rf reports/code-security* reports/container-security*
+	rm -rf reports/code-security* reports/container-security* web/dist

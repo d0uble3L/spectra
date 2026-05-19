@@ -6,6 +6,8 @@ SPECTRA is an AI-powered CLI and web platform that transforms raw security scann
 actionable intelligence — ranked findings, executive summaries, attack chain
 analysis, and concrete remediation steps. Powered by Claude.
 
+📖 **[Official Documentation](https://www.cybersecurityos.net/docs/spectra/)**
+
 ---
 
 ## Features
@@ -214,3 +216,11 @@ spectra/
 - Python 3.9+
 - Node 18+ (Web UI only)
 - Anthropic API key ([get one here](https://console.anthropic.com/))
+
+---
+
+## Documentation
+
+Full documentation — setup guides, API reference, CI/CD integration, and more — is available at:
+
+**https://www.cybersecurityos.net/docs/spectra/**

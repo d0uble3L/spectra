@@ -1,61 +1,74 @@
 # SPECTRA
 
-**Security Platform for Expert-level Correlation, Triage, and Risk Analysis**
+**AI-powered vulnerability intelligence that turns scanner noise into ranked, actionable findings your team can act on today.**
 
-SPECTRA is an AI-powered CLI and web platform that transforms raw security scanner output into
-actionable intelligence — ranked findings, executive summaries, attack chain
-analysis, and concrete remediation steps. Powered by Claude.
+▸ CYBERSECURITYOS · OPEN SOURCE
 
-📖 **[Official Documentation](https://www.cybersecurityos.net/docs/spectra/)**
+📖 [Official Documentation](https://www.cybersecurityos.net/docs/spectra/) &nbsp;·&nbsp; 📝 [Read the Post](https://www.cybersecurityos.net/posts/os-weekly/spectra-overview-claude-ai-security/) &nbsp;·&nbsp; ⭐ [GitHub](https://github.com/d0uble3L/spectra)
 
 ---
 
-## Features
+## The Problem
 
-- **Auto-detects** Trivy, Semgrep, and generic scanner formats
-- **AI analysis** via Claude — de-duplication, severity calibration, attack chain identification
-- **Two output formats** — rich Markdown reports and structured JSON
-- **Prompt caching** — the analyst system prompt is cached after the first call (~90% cheaper on repeats)
-- **Web UI** — dark-themed analyst dashboard with drag-and-drop upload, findings table, and report history
-- **REST API** — FastAPI backend for programmatic integration and CI/CD pipelines
-- **CI/CD-native** — GitHub Actions workflows for both code (Semgrep) and container (Trivy) scanning, with AI-generated PR comments
-- **Docker-ready** — mount your scan files, get reports back
+| | |
+|---|---|
+| **131** new CVEs / day | **~2%** are ever exploited |
+| **< 5 days** median time to exploit | **4.8M** security workforce gap |
+
+Traditional vulnerability management tools score severity in isolation — not whether the exploit path is reachable in your environment, not what attackers are actively using, not what your CISO needs to hear.
+
+**Score Inflation** — 28% of Q1 2025 exploited vulnerabilities had only medium CVSS scores. Teams prioritizing by score alone are systematically looking in the wrong direction.
+
+**Triage Overload** — With 131 new CVEs per day and a 4.8 million person workforce gap, manual triage isn't just slow — it's burning analyst time on findings that will never be exploited.
+
+**Exploit Velocity** — Median time from CVE disclosure to active exploitation dropped from 745 days in 2020 to under 5 days today. Manual triage wasn't built for this speed.
+
+---
+
+## What SPECTRA Does
+
+SPECTRA sits downstream of your existing scanners — Trivy, Semgrep, Nessus — and applies Claude AI to produce intelligence your team can immediately act on.
+
+| Capability | Description |
+|---|---|
+| **Ranked Findings** | Vulnerabilities prioritized by real-world exploitability, not theoretical CVSS scores |
+| **Attack Chain Analysis** | Connects related vulnerabilities into exploitable paths across your scanner's separate findings |
+| **Executive Summaries** | Leadership-ready briefings generated automatically — no manual translation required |
+| **Actionable Remediation** | Not "patch this CVE" — but how, where, and why, specific to your stack |
+| **Scanner Agnostic** | Trivy, Semgrep, Nessus, any JSON scanner output — plugs into what you already have |
+| **Dual Output** | Markdown and JSON — ready for dashboards, ticketing systems, or Slack bots |
 
 ---
 
 ## Quick Start
 
-### CLI
+Running in under 60 seconds. Python 3.9+. No cloud account. No SaaS onboarding.
 
 ```bash
-git clone https://github.com/d0uble3L/spectra.git
-cd spectra
-pip install -e .
-cp .env.example .env   # add your Anthropic API key
+# Clone and install
+git clone https://github.com/d0uble3L/spectra
+cd spectra && pip install -e .
 
-# Analyze a Trivy container scan
-spectra analyze tests/samples/trivy_sample.json
+# Set your Anthropic API key
+export ANTHROPIC_API_KEY=your_key
 
-# Analyze a Semgrep SAST report → save as JSON
-spectra analyze tests/samples/semgrep_sample.json --format json --output reports/out
-
-# Both formats + show token usage
-spectra analyze trivy.json --format both --output reports/run1 --usage
+# Run against your scanner output
+spectra analyze trivy.json
 ```
 
-### Web UI
-
-```bash
-pip install -e ".[api]"
-
-# Terminal 1 — FastAPI backend
-uvicorn api.main:app --reload --port 8000
-
-# Terminal 2 — React dev server (proxies /api → :8000)
-cd web && npm install && npm run dev
 ```
+▸ Loading scan results... 47 findings
+▸ Analyzing attack chains...
+▸ Ranking by real-world severity...
+▸ Generating executive summary...
 
-Open **http://localhost:3000** for the analyst dashboard, or **http://localhost:8000/api/docs** for the interactive API explorer.
+✓ Analysis complete
+  Critical: 3 · High: 11 · Medium: 22 · Low: 11
+  Output: spectra-report.md + spectra-report.json
+
+# 3 critical paths worth your attention today.
+# The other 44? Documented. Deprioritized. Defensible.
+```
 
 ---
 
@@ -78,42 +91,42 @@ Options:
 
 ---
 
-## REST API
+## Use Cases
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/analyze` | Upload scan file → AI report |
-| `GET` | `/api/reports` | List past reports |
-| `GET` | `/api/reports/{id}` | Fetch a report |
-| `GET` | `/health` | Health check |
-| `GET` | `/api/docs` | Interactive Swagger UI |
+**Vulnerability Management** — Stop drowning in scanner output. SPECTRA ranks what matters, chains what connects, and produces the prioritized remediation plan your team needs — not a spreadsheet of CVEs sorted by CVSS.
+
+**DevSecOps Pipeline** — Plug SPECTRA into your CI/CD pipeline and get actionable security context on every build — without flooding developers with noise that kills velocity and trust.
+
+**Red Team Reporting** — Transform raw engagement findings into chained attack narratives that actually land with leadership. Connect your findings into the story that drives remediation investment.
+
+**GRC & Compliance Reporting** — Generate board-ready risk summaries and compliance evidence automatically. Map findings to controls. Produce the artifacts your auditors need without the manual overhead.
+
+---
+
+## Web UI
 
 ```bash
-# Quick smoke test
-curl -X POST http://localhost:8000/api/analyze \
-  -F "file=@tests/samples/trivy_sample.json" \
-  -F "scanner=auto"
+pip install -e ".[api]"
+
+# Terminal 1 — FastAPI backend
+uvicorn api.main:app --reload --port 8000
+
+# Terminal 2 — React dev server
+cd web && npm install && npm run dev
 ```
+
+Open **http://localhost:3000** for the analyst dashboard or **http://localhost:8000/api/docs** for the API explorer.
 
 ---
 
 ## CI/CD Integration
 
-SPECTRA ships with two GitHub Actions workflows that scan every push and pull
-request, then post the AI analysis directly as a PR comment.
+SPECTRA ships with two GitHub Actions workflows that scan every push and pull request, then post AI analysis directly as a PR comment.
 
-### Workflows
-
-| Workflow | Trigger | Scanner | What it scans |
-|----------|---------|---------|---------------|
-| `sast` | push / PR | Semgrep | Source code (SAST) |
-| `container-scan` | push / PR (Dockerfile or deps changed) | Trivy | Built container image |
-
-Both workflows post a Spectra AI report as a PR comment and upload a Markdown artifact.
-
-### Setup
-
-Add your Anthropic API key as a GitHub Actions secret:
+| Workflow | Scanner | What it scans |
+|----------|---------|---------------|
+| `sast` | Semgrep | Source code (SAST) |
+| `container-scan` | Trivy | Built container image |
 
 ```
 Settings → Secrets and variables → Actions → New repository secret
@@ -121,26 +134,11 @@ Name:  ANTHROPIC_API_KEY
 Value: sk-ant-...
 ```
 
-### Local scanning with Make
-
 ```bash
-make scan-code       # Semgrep + Spectra (requires: pip install semgrep)
-make scan-container  # Trivy + Spectra (requires: trivy)
+make scan-code       # Semgrep + Spectra locally
+make scan-container  # Trivy + Spectra locally
 make scan-all        # both back-to-back
 ```
-
----
-
-## GitHub Releases
-
-Push a version tag to cut a release with auto-generated changelog:
-
-```bash
-git tag v1.0.0
-git push --tags
-```
-
-Pre-release tags (`-alpha`, `-beta`, `-rc`) are automatically marked as pre-release on GitHub.
 
 ---
 
@@ -150,9 +148,29 @@ Pre-release tags (`-alpha`, `-beta`, `-rc`) are automatically marked as pre-rele
 # CLI analysis
 docker compose run --rm analyze scans/trivy.json --format both --output /app/reports/out
 
-# Web UI + API server
+# Web UI + API
 docker compose up api   # → http://localhost:8000
 ```
+
+---
+
+## GitHub Releases
+
+```bash
+git tag v1.0.0 && git push --tags
+# → Release created automatically with changelog
+```
+
+---
+
+## REST API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/analyze` | Upload scan file → AI report |
+| `GET` | `/api/reports` | List past reports |
+| `GET` | `/api/reports/{id}` | Fetch a report |
+| `GET` | `/api/docs` | Interactive Swagger UI |
 
 ---
 
@@ -184,12 +202,11 @@ spectra/
 │   ├── analyzer.py           # Claude API integration + prompt caching
 │   ├── cli.py                # Typer CLI
 │   ├── models.py             # Pydantic output schema
-│   ├── parsers/              # Scanner normalizers (Trivy, Semgrep, generic)
+│   ├── parsers/              # Scanner normalizers
 │   └── reporters/            # Markdown + JSON output
 ├── tests/samples/            # Sample scan files for testing
 ├── Makefile                  # Developer shortcuts
-├── Dockerfile                # Hardened: non-root user, patched build tools
-└── docker-compose.yml
+└── Dockerfile                # Hardened: non-root user, patched build tools
 ```
 
 ---
@@ -205,7 +222,7 @@ spectra/
 - [x] Web UI analyst dashboard (React + Vite)
 - [x] GitHub Releases workflow
 - [ ] Multi-scanner batch processing
-- [ ] Persistent report storage (PostgreSQL / SQLite)
+- [ ] Persistent report storage
 - [ ] Jira / ServiceNow ticket creation
 - [ ] Trend analysis and risk scoring over time
 
@@ -221,6 +238,12 @@ spectra/
 
 ## Documentation
 
-Full documentation — setup guides, API reference, CI/CD integration, and more — is available at:
+Full documentation, setup guides, and API reference:
 
 **https://www.cybersecurityos.net/docs/spectra/**
+
+---
+
+*Open source. No vendor lock-in. Runs in your environment. Powered by Claude.*
+
+**[CYBERSECURITYOS](https://www.cybersecurityos.net) · [GITHUB](https://github.com/d0uble3L/spectra) · [READ THE POST](https://www.cybersecurityos.net/posts/os-weekly/spectra-overview-claude-ai-security/)**

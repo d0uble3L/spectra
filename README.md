@@ -1,6 +1,8 @@
 # SPECTRA
 
-**AI-powered vulnerability intelligence that turns scanner noise into ranked, actionable findings your team can act on today.**
+**Security Platform for Expert-level Correlation, Triage, and Risk Analysis**
+
+AI-powered vulnerability intelligence that turns scanner noise into ranked, actionable findings your team can act on today.
 
 ▸ CYBERSECURITYOS · OPEN SOURCE
 

@@ -57,6 +57,7 @@ function formatDate(iso: string): string {
 export default function ReportList({ activeReportId, refreshKey, onSelect, onNewScan, onDeleted }: ReportListProps) {
   const [reports, setReports] = useState<ReportSummary[]>([])
   const [total, setTotal] = useState(0)
+  const [nextOffset, setNextOffset] = useState(0)
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,6 +70,7 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
       const data = await getReports(PAGE_SIZE, 0)
       setReports(data.items)
       setTotal(data.total)
+      setNextOffset(data.items.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reports')
     } finally {
@@ -80,15 +82,16 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
     setLoadingMore(true)
     setError(null)
     try {
-      const data = await getReports(PAGE_SIZE, reports.length)
+      const data = await getReports(PAGE_SIZE, nextOffset)
       setReports((prev) => [...prev, ...data.items])
       setTotal(data.total)
+      setNextOffset((prev) => prev + data.items.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reports')
     } finally {
       setLoadingMore(false)
     }
-  }, [reports.length])
+  }, [nextOffset])
 
   const handleDelete = useCallback(async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -99,6 +102,7 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
       await deleteReport(id)
       setReports((prev) => prev.filter((r) => r.id !== id))
       setTotal((t) => Math.max(0, t - 1))
+      setNextOffset((o) => Math.max(0, o - 1))
       onDeleted(id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete report')
@@ -220,7 +224,7 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
         {!loading && reports.length < total && (
           <button
             onClick={loadMore}
-            disabled={loadingMore}
+            disabled={loadingMore || deletingId !== null}
             className="w-full mt-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-500
                        hover:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-50"
           >

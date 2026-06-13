@@ -66,6 +66,13 @@ export interface ReportSummary {
   overall_risk_score: number
 }
 
+export interface ReportListResponse {
+  items: ReportSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface ReportDetail {
   id: string
   report: AnalysisReport

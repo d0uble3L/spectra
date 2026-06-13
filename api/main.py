@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,9 +27,16 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Comma-separated list of allowed origins, e.g. "https://app.example.com,https://admin.example.com"
+# Defaults to "*" for local development.
+_cors_origins = os.environ.get("CORS_ORIGINS", "*")
+_allow_origins = ["*"] if _cors_origins.strip() == "*" else [
+    origin.strip() for origin in _cors_origins.split(",") if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -85,8 +92,11 @@ async def analyze_scan(
 # ── Reports ───────────────────────────────────────────────────────────────────
 
 @app.get("/api/reports")
-async def list_reports():
-    return [
+async def list_reports(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    summaries = [
         {
             "id": v["id"],
             "created_at": v["created_at"],
@@ -97,6 +107,12 @@ async def list_reports():
         }
         for v in sorted(_reports.values(), key=lambda x: x["created_at"], reverse=True)
     ]
+    return {
+        "items": summaries[offset : offset + limit],
+        "total": len(summaries),
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @app.get("/api/reports/{report_id}")
@@ -105,6 +121,13 @@ async def get_report(report_id: str):
     if not entry:
         raise HTTPException(status_code=404, detail="Report not found.")
     return entry
+
+
+@app.delete("/api/reports/{report_id}", status_code=204)
+async def delete_report(report_id: str):
+    if report_id not in _reports:
+        raise HTTPException(status_code=404, detail="Report not found.")
+    del _reports[report_id]
 
 
 # ── Static frontend (production build) ───────────────────────────────────────

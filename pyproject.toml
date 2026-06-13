@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spectra-security"
-version = "0.1.0"
+version = "0.2.0"
 description = "SPECTRA — AI-Powered Security Intelligence Platform"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -36,6 +36,7 @@ api = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "httpx>=0.27",
     "ruff>=0.4",
     "mypy>=1.10",
 ]

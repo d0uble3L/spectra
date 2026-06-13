@@ -80,6 +80,12 @@ export default function App() {
     setView({ kind: 'idle' })
   }, [])
 
+  const handleReportDeleted = useCallback((id: string) => {
+    if (view.kind === 'report' && view.id === id) {
+      setView({ kind: 'idle' })
+    }
+  }, [view])
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
       {/* Sidebar */}
@@ -96,6 +102,7 @@ export default function App() {
             refreshKey={refreshKey}
             onSelect={handleSelectReport}
             onNewScan={handleNewScan}
+            onDeleted={handleReportDeleted}
           />
         </div>
       </aside>

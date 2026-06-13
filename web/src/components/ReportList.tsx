@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { ReportSummary } from '../types'
 import { RISK_COLOR } from '../types'
-import { getReports } from '../api'
+import { getReports, deleteReport } from '../api'
+
+const PAGE_SIZE = 20
 
 interface ReportListProps {
   activeReportId: string | null
   refreshKey: number
   onSelect: (id: string) => void
   onNewScan: () => void
+  onDeleted: (id: string) => void
 }
 
 function ScannerIcon({ type }: { type: string }) {
@@ -51,27 +54,58 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function ReportList({ activeReportId, refreshKey, onSelect, onNewScan }: ReportListProps) {
+export default function ReportList({ activeReportId, refreshKey, onSelect, onNewScan, onDeleted }: ReportListProps) {
   const [reports, setReports] = useState<ReportSummary[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await getReports()
-      // Sort newest first
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      setReports(sorted)
+      const data = await getReports(PAGE_SIZE, 0)
+      setReports(data.items)
+      setTotal(data.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reports')
     } finally {
       setLoading(false)
     }
   }, [])
+
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true)
+    setError(null)
+    try {
+      const data = await getReports(PAGE_SIZE, reports.length)
+      setReports((prev) => [...prev, ...data.items])
+      setTotal(data.total)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load reports')
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [reports.length])
+
+  const handleDelete = useCallback(async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    if (!confirm('Delete this report?')) return
+    setDeletingId(id)
+    setError(null)
+    try {
+      await deleteReport(id)
+      setReports((prev) => prev.filter((r) => r.id !== id))
+      setTotal((t) => Math.max(0, t - 1))
+      onDeleted(id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete report')
+    } finally {
+      setDeletingId(null)
+    }
+  }, [onDeleted])
 
   useEffect(() => {
     fetchReports()
@@ -142,17 +176,17 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
             const riskColor = RISK_COLOR[r.risk_level]
 
             return (
-              <li key={r.id}>
+              <li key={r.id} className="relative group">
                 <button
                   onClick={() => onSelect(r.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-100 group ${
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors duration-100 ${
                     isActive
                       ? 'bg-slate-700 text-slate-100'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium truncate flex-1">
+                    <span className="text-xs font-medium truncate flex-1 pr-5">
                       {r.filename || 'Unknown file'}
                     </span>
                     <span className={`text-xs font-bold tabular-nums shrink-0 ${riskColor}`}>
@@ -165,10 +199,34 @@ export default function ReportList({ activeReportId, refreshKey, onSelect, onNew
                     <span className="text-xs text-slate-600 ml-auto">{formatDate(r.created_at)}</span>
                   </div>
                 </button>
+                <button
+                  onClick={(e) => handleDelete(e, r.id)}
+                  disabled={deletingId === r.id}
+                  title="Delete report"
+                  className="absolute top-2 right-2 p-1 rounded text-slate-600 opacity-0
+                             group-hover:opacity-100 hover:text-red-400 hover:bg-slate-900
+                             disabled:opacity-50 transition-opacity"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
               </li>
             )
           })}
         </ul>
+
+        {!loading && reports.length < total && (
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="w-full mt-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-500
+                       hover:text-slate-300 hover:bg-slate-800 transition-colors disabled:opacity-50"
+          >
+            {loadingMore ? 'Loading…' : `Load more (${reports.length}/${total})`}
+          </button>
+        )}
       </div>
 
       {/* Footer */}

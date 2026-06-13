@@ -1,6 +1,6 @@
 import type {
   AnalyzeResponse,
-  ReportSummary,
+  ReportListResponse,
   ReportDetail,
   ScannerFormat,
 } from './types'
@@ -83,11 +83,12 @@ export async function analyzeFile(
 
 /**
  * GET /api/reports
- * Returns a list of all stored report summaries.
+ * Returns a page of stored report summaries.
  */
-export async function getReports(): Promise<ReportSummary[]> {
-  const res = await fetch(`${BASE}/reports`)
-  return handleResponse<ReportSummary[]>(res)
+export async function getReports(limit = 20, offset = 0): Promise<ReportListResponse> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+  const res = await fetch(`${BASE}/reports?${params}`)
+  return handleResponse<ReportListResponse>(res)
 }
 
 /**
@@ -97,4 +98,15 @@ export async function getReports(): Promise<ReportSummary[]> {
 export async function getReport(id: string): Promise<ReportDetail> {
   const res = await fetch(`${BASE}/reports/${encodeURIComponent(id)}`)
   return handleResponse<ReportDetail>(res)
+}
+
+/**
+ * DELETE /api/reports/:id
+ * Permanently removes a stored report.
+ */
+export async function deleteReport(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/reports/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) {
+    await handleResponse(res)
+  }
 }

@@ -13,11 +13,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let message = `HTTP ${res.status} ${res.statusText}`
     try {
-      const body = await res.json()
-      if (body?.detail) {
-        message = typeof body.detail === 'string'
-          ? body.detail
-          : JSON.stringify(body.detail)
+      const body: unknown = await res.json()
+      const detail = (body as { detail?: unknown } | null)?.detail
+      if (detail) {
+        message = typeof detail === 'string' ? detail : JSON.stringify(detail)
       }
     } catch {
       // ignore JSON parse errors; keep HTTP status message
@@ -106,7 +105,7 @@ export async function getReport(id: string): Promise<ReportDetail> {
  */
 export async function deleteReport(id: string): Promise<void> {
   const res = await fetch(`${BASE}/reports/${encodeURIComponent(id)}`, { method: 'DELETE' })
-  if (!res.ok && res.status !== 204) {
+  if (!res.ok) {
     await handleResponse(res)
   }
 }

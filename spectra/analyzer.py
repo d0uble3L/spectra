@@ -8,8 +8,18 @@ import anthropic
 
 from .models import AnalysisReport
 
+# Default model for every entry point (CLI, API). Override per run with
+# --model, or set SPECTRA_MODEL in the environment / .env.
+DEFAULT_MODEL = "claude-sonnet-5-5"
+
+# Security analysis can trip the API's `cyber` safety classifier. With
+# server-side fallbacks, a declined request is re-run on a fallback model chosen
+# by refusal category inside the same call, instead of failing outright.
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
 # ─── System Prompt ────────────────────────────────────────────────────────────
-# Kept long & stable so prompt caching kicks in (>4096 tokens for Opus 4.7).
+# Kept stable so prompt caching applies (it clears the minimum cacheable prefix:
+# 512 tokens on Sonnet 5.5, up to 4096 on older models).
 # Never embed timestamps or per-request data here.
 
 SYSTEM_PROMPT = """
@@ -182,7 +192,7 @@ QUALITY RULES:
 
 def analyze(
     scan_content: str,
-    model: str = "claude-opus-4-7",
+    model: str = DEFAULT_MODEL,
     show_thinking: bool = False,
 ) -> tuple[AnalysisReport, dict]:
     """
@@ -193,11 +203,19 @@ def analyze(
     """
     client = anthropic.Anthropic()
 
-    with client.messages.stream(
+    # Thinking text is omitted from responses by default; ask for a readable
+    # summary only when the caller wants to see it.
+    thinking: dict = {"type": "adaptive"}
+    if show_thinking:
+        thinking["display"] = "summarized"
+
+    with client.beta.messages.stream(
         model=model,
         max_tokens=16000,
-        thinking={"type": "adaptive"},
+        thinking=thinking,
         output_config={"effort": "high"},
+        betas=[FALLBACK_BETA],
+        fallbacks="default",
         system=[
             {
                 "type": "text",
@@ -227,6 +245,14 @@ def analyze(
                     thinking_text.append(event.delta.thinking)
 
         message = stream.get_final_message()
+
+    if message.stop_reason == "refusal":
+        details = message.stop_details
+        category = getattr(details, "category", None) or "unspecified"
+        raise RuntimeError(
+            f"Claude declined to analyze this input (refusal category: {category}), "
+            "including on the fallback model. Try a different --model or trim the input."
+        )
 
     text = next((b.text for b in message.content if b.type == "text"), None)
     if not text:

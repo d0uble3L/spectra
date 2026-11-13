@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -17,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from spectra import __version__
-from spectra.analyzer import analyze
+from spectra.analyzer import DEFAULT_MODEL, analyze
 from spectra.models import AnalysisReport
 from spectra.parsers import detect_and_normalize
 from spectra.reporters import render_markdown
@@ -62,8 +63,9 @@ async def health():
 async def analyze_scan(
     file: UploadFile = File(...),
     scanner: str = Form("auto"),
-    model: str = Form("claude-opus-4-7"),
+    model: Optional[str] = Form(None),
 ):
+    model = model or os.getenv("SPECTRA_MODEL") or DEFAULT_MODEL
     content = (await file.read()).decode("utf-8", errors="replace")
     if not content.strip():
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")

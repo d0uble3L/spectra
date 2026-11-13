@@ -86,7 +86,7 @@ Options:
   -s, --scanner   Scanner format: auto, trivy, semgrep, generic  [default: auto]
   -f, --format    Output format: markdown, json, both             [default: markdown]
   -o, --output    Write output to file
-  -m, --model     Claude model to use                             [default: claude-opus-4-7]
+  -m, --model     Claude model to use                             [default: claude-sonnet-5-5]
   -t, --think     Stream Claude's reasoning (verbose)
   -u, --usage     Print token usage after analysis
 ```

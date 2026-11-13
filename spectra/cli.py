@@ -15,7 +15,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from .analyzer import analyze
+from .analyzer import DEFAULT_MODEL, analyze
 from .parsers import detect_and_normalize
 from .reporters import render_json, render_markdown
 
@@ -57,9 +57,10 @@ def analyze_cmd(
         help="Write output to file (auto-suffixed for 'both')",
     ),
     model: str = typer.Option(
-        "claude-opus-4-7",
+        DEFAULT_MODEL,
         "--model",
         "-m",
+        envvar="SPECTRA_MODEL",
         help="Claude model to use",
     ),
     show_thinking: bool = typer.Option(

@@ -83,12 +83,13 @@ export interface ReportDetail {
 
 // ─── Scanner Format ──────────────────────────────────────────────────────────
 
-export type ScannerFormat = 'auto' | 'trivy' | 'semgrep' | 'generic'
+export type ScannerFormat = 'auto' | 'trivy' | 'semgrep' | 'snyk' | 'generic'
 
 export const SCANNER_FORMATS: { value: ScannerFormat; label: string }[] = [
   { value: 'auto', label: 'Auto-detect' },
   { value: 'trivy', label: 'Trivy (CVE)' },
   { value: 'semgrep', label: 'Semgrep (SAST)' },
+  { value: 'snyk', label: 'Snyk' },
   { value: 'generic', label: 'Generic' },
 ]
 

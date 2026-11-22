@@ -72,23 +72,84 @@ spectra analyze trivy.json
 # The other 44? Documented. Deprioritized. Defensible.
 ```
 
+### Snyk setup
+
+Snyk scanning requires a Snyk account with access to the selected product, the Snyk CLI, and
+an authenticated CLI session. Install the CLI with npm or another supported method, then
+authenticate interactively with `snyk auth` or set `SNYK_TOKEN` for automation. Spectra also
+needs `ANTHROPIC_API_KEY` to generate the analysis report.
+
+```bash
+npm install --global snyk
+snyk auth
+export ANTHROPIC_API_KEY=<your-anthropic-key>
+
+# Scan dependencies in the current project, analyze them, and save both report formats
+spectra scan snyk --product open-source --target . \
+  --snyk-arg=--all-projects --format both --output reports/snyk
+```
+
+For CI, store `SNYK_TOKEN` and `ANTHROPIC_API_KEY` as protected secrets and expose them only to
+the scan step. See [CI/CD Integration](#cicd-integration) for a workflow example. You can also
+upload Snyk-generated JSON to Spectra without providing Snyk credentials to the API server.
+
 ---
 
 ## CLI Usage
 
 ```
 spectra analyze [OPTIONS] [INPUT_FILE]
+spectra scan snyk [OPTIONS]
 
 Arguments:
   INPUT_FILE    Scanner output file (omit to read from stdin)
 
 Options:
-  -s, --scanner   Scanner format: auto, trivy, semgrep, generic  [default: auto]
+  -s, --scanner   Scanner format: auto, trivy, semgrep, snyk, generic  [default: auto]
   -f, --format    Output format: markdown, json, both             [default: markdown]
   -o, --output    Write output to file
   -m, --model     Claude model to use                             [default: claude-sonnet-5-5]
   -t, --think     Stream Claude's reasoning (verbose)
   -u, --usage     Print token usage after analysis
+```
+
+Run a Snyk scan and analyze the results in one step:
+
+```bash
+# Install the Snyk CLI separately, then authenticate with SNYK_TOKEN or `snyk auth`.
+# See https://docs.snyk.io/snyk-cli/install-the-snyk-cli and
+# https://docs.snyk.io/snyk-cli/authenticate-to-use-the-cli.
+npm install --global snyk
+export SNYK_TOKEN=<your-snyk-token>
+
+spectra scan snyk --product open-source --target . --snyk-arg=--all-projects --format both --output reports/snyk
+spectra scan snyk --product code --target . --format markdown
+spectra scan snyk --product iac --target . --format markdown
+spectra scan snyk --product container --target my-image:latest --format markdown
+```
+
+The `scan` command requires the Snyk CLI on `PATH`. `--scan-output snyk.json` optionally saves
+the raw scan JSON. The `open-source`, `code`, and `iac` products expect a project path; the
+`container` product expects an image reference accessible to Snyk. Scans that complete with
+findings are still analyzed; Snyk CLI authentication or execution errors stop the command.
+Pass product-specific Snyk CLI options with repeatable `--snyk-arg` flags. Snyk CLI installation
+and authentication are managed separately from the Spectra Python package; use `snyk auth` for
+local interactive setup or provide `SNYK_TOKEN` in CI.
+
+To analyze a Snyk JSON export without running the scanner:
+
+```bash
+spectra analyze snyk.json --scanner snyk
+```
+
+The REST API accepts the same exported results at `POST /api/analyze`, using multipart fields
+`file` and `scanner=snyk`. Spectra does not run the Snyk CLI inside the API server.
+For example:
+
+```bash
+curl -X POST http://localhost:8000/api/analyze \
+  -F file=@snyk.json \
+  -F scanner=snyk
 ```
 
 ---
@@ -136,6 +197,34 @@ Name:  ANTHROPIC_API_KEY
 Value: sk-ant-...
 ```
 
+For Snyk, install the CLI in your job (`npm install --global snyk`) and map the repository
+secret `SNYK_TOKEN` to the job's `SNYK_TOKEN` environment variable. Then run one or more
+`spectra scan snyk --product ...` commands after installing Spectra. Keep this opt-in in your
+own workflow: Snyk product access and the target (especially a container image reference)
+depend on your account and project. For API-only ingestion, upload Snyk JSON as shown above;
+the API server does not need `SNYK_TOKEN`.
+
+Example step to copy into an existing workflow in this repository:
+
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    node-version: "20"
+- run: npm install --global snyk
+- run: pip install -e .
+- name: Analyze Snyk Open Source results
+  env:
+    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  run: >-
+    spectra scan snyk --product open-source --target .
+    --snyk-arg=--all-projects --format markdown --output reports/snyk
+```
+
+Change `--product` and `--target` for Code, IaC, or Container; for Container, use an image
+reference available to the job. Keep Snyk and Anthropic tokens in Actions secrets, not workflow
+files. No Snyk job is enabled in this repository by default.
+
 ```bash
 make scan-code       # Semgrep + Spectra locally
 make scan-container  # Trivy + Spectra locally
@@ -182,6 +271,7 @@ git tag v1.0.0 && git push --tags
 |---------|--------|:-----------:|
 | Trivy | JSON | ✅ |
 | Semgrep | JSON | ✅ |
+| Snyk Open Source, Code, Container, IaC | JSON | ✅ |
 | Nessus / OpenVAS | Text | via `--scanner generic` |
 | Burp Suite | Text export | via `--scanner generic` |
 | Pentest notes | Plain text | via `--scanner generic` |
@@ -217,6 +307,7 @@ spectra/
 
 - [x] Trivy container scan support
 - [x] Semgrep SAST support
+- [x] Snyk JSON ingestion and CLI scans (Open Source, Code, Container, IaC)
 - [x] Prompt caching (~90% cost reduction on repeat runs)
 - [x] CI/CD GitHub Actions integration with PR comments
 - [x] Docker support (non-root, hardened image)

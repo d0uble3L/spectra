@@ -1,5 +1,6 @@
 """Smoke tests for the FastAPI app — no Anthropic API calls required."""
 import importlib
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -59,6 +60,44 @@ def test_delete_report(client):
 def test_delete_missing_report(client):
     res = client.delete("/api/reports/does-not-exist")
     assert res.status_code == 404
+
+
+def test_analyze_snyk_upload(client, monkeypatch):
+    from api import main as api_main
+    from spectra.models import AnalysisReport
+
+    report = AnalysisReport(
+        executive_summary="No significant risks.",
+        overall_risk_score=0,
+        risk_level="LOW",
+        scanner_type="Snyk Open Source",
+    )
+    captured = {}
+
+    def fake_analyze(content, model):
+        captured["content"] = content
+        return report, {}
+
+    monkeypatch.setattr(api_main, "analyze", fake_analyze)
+    scan = {
+        "ok": False,
+        "dependencyCount": 1,
+        "vulnerabilities": [{
+            "id": "SNYK-JS-EXAMPLE-123",
+            "severity": "high",
+            "packageName": "example-package",
+            "version": "1.0.0",
+        }],
+    }
+
+    res = client.post(
+        "/api/analyze",
+        data={"scanner": "snyk"},
+        files={"file": ("snyk.json", json.dumps(scan), "application/json")},
+    )
+
+    assert res.status_code == 200
+    assert "SNYK-JS-EXAMPLE-123" in captured["content"]
 
 
 def test_cors_defaults_to_wildcard(client):

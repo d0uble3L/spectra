@@ -234,13 +234,15 @@ def _severity(value: Any) -> str:
 def _references(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
-    return [
-        str(item.get("url") or item.get("href"))
-        if isinstance(item, dict)
-        else str(item)
-        for item in value
-        if isinstance(item, (dict, str))
-    ]
+    references: list[str] = []
+    for item in value:
+        if isinstance(item, dict):
+            reference = item.get("url") or item.get("href")
+            if reference:
+                references.append(str(reference))
+        elif isinstance(item, str) and item:
+            references.append(item)
+    return references
 
 
 def _format_list(value: Any) -> str:

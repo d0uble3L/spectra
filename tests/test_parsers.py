@@ -2,9 +2,7 @@
 import json
 from pathlib import Path
 
-import pytest
-
-from spectra.parsers import generic, semgrep, snyk, trivy
+from spectra.parsers import snyk
 from spectra.parsers.auto import detect_and_normalize
 
 SAMPLES = Path(__file__).parent / "samples"
@@ -150,3 +148,20 @@ def test_snyk_auto_detect_requires_snyk_shape():
 
     assert not snyk.is_snyk(json.loads(raw))
     assert "generic" in detect_and_normalize(raw).lower()
+
+
+def test_snyk_references_ignore_entries_without_urls():
+    result = snyk.parse({
+        "ok": False,
+        "vulnerabilities": [{
+            "id": "SNYK-TEST-123",
+            "severity": "high",
+            "references": [
+                {"title": "No URL"},
+                {"url": "https://example.test/advisory"},
+            ],
+        }],
+    })
+
+    assert "https://example.test/advisory" in result
+    assert "Refs     : None" not in result

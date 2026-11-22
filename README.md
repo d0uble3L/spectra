@@ -204,6 +204,11 @@ own workflow: Snyk product access and the target (especially a container image r
 depend on your account and project. For API-only ingestion, upload Snyk JSON as shown above;
 the API server does not need `SNYK_TOKEN`.
 
+The API's `CORS_ORIGINS` setting is a comma-separated allow-list. It defaults to
+`http://localhost:3000,http://127.0.0.1:3000` for local development; set it to the exact
+frontend origins in production. Wildcard origins are rejected, and credentialed CORS is
+disabled.
+
 Example step to copy into an existing workflow in this repository:
 
 ```yaml

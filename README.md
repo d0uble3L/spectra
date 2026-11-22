@@ -209,6 +209,12 @@ The API's `CORS_ORIGINS` setting is a comma-separated allow-list. It defaults to
 frontend origins in production. Wildcard origins are rejected, and credentialed CORS is
 disabled.
 
+For deployed API access, set `SPECTRA_API_TOKEN` to a random secret. When configured,
+analysis and report endpoints require the same secret in the `X-Spectra-API-Token` header.
+Uploads are limited to 10 MiB by default; set `SPECTRA_MAX_UPLOAD_BYTES` to change the limit.
+The in-memory report store retains 100 reports by default; set `SPECTRA_MAX_REPORTS` to change
+its bounded size. API authentication is disabled only when `SPECTRA_API_TOKEN` is unset.
+
 Example step to copy into an existing workflow in this repository:
 
 ```yaml

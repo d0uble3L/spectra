@@ -131,3 +131,69 @@ def test_cors_rejects_wildcard_origin(monkeypatch):
         from api import main as api_main
 
         importlib.reload(api_main)
+
+
+def test_api_token_auth(monkeypatch):
+    monkeypatch.setenv("SPECTRA_API_TOKEN", "test-secret")
+    from api import main as api_main
+
+    importlib.reload(api_main)
+    client = TestClient(api_main.app)
+
+    unauthorized = client.get("/api/reports")
+    assert unauthorized.status_code == 401
+
+    authorized = client.get(
+        "/api/reports",
+        headers={"X-Spectra-API-Token": "test-secret"},
+    )
+    assert authorized.status_code == 200
+
+
+def test_api_rejects_oversized_upload(monkeypatch):
+    monkeypatch.setenv("SPECTRA_MAX_UPLOAD_BYTES", "64")
+    from api import main as api_main
+
+    importlib.reload(api_main)
+    client = TestClient(api_main.app)
+
+    res = client.post(
+        "/api/analyze",
+        data={"scanner": "generic"},
+        files={"file": ("large.txt", "x" * 65, "text/plain")},
+    )
+    assert res.status_code == 413
+
+
+def test_api_evicts_oldest_report(monkeypatch):
+    monkeypatch.setenv("SPECTRA_MAX_REPORTS", "2")
+    from api import main as api_main
+
+    importlib.reload(api_main)
+
+    api_main._reports["old"] = {
+        "id": "old",
+        "created_at": "2024-01-01T00:00:00+00:00",
+    }
+    api_main._reports["new"] = {
+        "id": "new",
+        "created_at": "2024-01-02T00:00:00+00:00",
+    }
+
+    async def insert_third_report():
+        async with api_main._reports_lock:
+            api_main._reports["third"] = {
+                "id": "third",
+                "created_at": "2024-01-03T00:00:00+00:00",
+            }
+            if len(api_main._reports) > api_main._max_reports:
+                oldest_id = min(
+                    api_main._reports,
+                    key=lambda existing_id: api_main._reports[existing_id]["created_at"],
+                )
+                del api_main._reports[oldest_id]
+
+    import asyncio
+
+    asyncio.run(insert_third_report())
+    assert set(api_main._reports) == {"new", "third"}

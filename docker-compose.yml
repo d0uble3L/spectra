@@ -6,6 +6,9 @@ services:
       - .env
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SPECTRA_API_TOKEN=${SPECTRA_API_TOKEN:-}
+      - SPECTRA_MAX_UPLOAD_BYTES=${SPECTRA_MAX_UPLOAD_BYTES:-10485760}
+      - SPECTRA_MAX_REPORTS=${SPECTRA_MAX_REPORTS:-100}
     volumes:
       - ./scans:/app/scans       # mount scanner output files here
       - ./reports:/app/reports   # reports land here

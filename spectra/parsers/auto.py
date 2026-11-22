@@ -3,19 +3,21 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from . import generic, semgrep, trivy
+from . import generic, semgrep, snyk, trivy
 
 
 def detect_and_normalize(raw: str, hint: str = "auto") -> str:
     """
     Detect scanner format and return a normalized string ready for Claude.
 
-    hint: "auto" | "trivy" | "semgrep" | "generic"
+    hint: "auto" | "trivy" | "semgrep" | "snyk" | "generic"
     """
     if hint == "trivy":
         return _try_trivy(raw) or generic.parse(raw)
     if hint == "semgrep":
         return _try_semgrep(raw) or generic.parse(raw)
+    if hint == "snyk":
+        return _try_snyk(raw) or generic.parse(raw)
     if hint == "generic":
         return generic.parse(raw)
 
@@ -26,6 +28,8 @@ def detect_and_normalize(raw: str, hint: str = "auto") -> str:
             return trivy.parse(data)
         if _is_semgrep(data):
             return semgrep.parse(data)
+        if snyk.is_snyk(data):
+            return snyk.parse(data)
 
     return generic.parse(raw)
 
@@ -50,6 +54,13 @@ def _try_semgrep(raw: str) -> "Optional[str]":
     data = _try_parse_json(raw)
     if data and _is_semgrep(data):
         return semgrep.parse(data)
+    return None
+
+
+def _try_snyk(raw: str) -> "Optional[str]":
+    data = _try_parse_json(raw)
+    if data is not None and snyk.is_snyk(data):
+        return snyk.parse(data)
     return None
 
 

@@ -1,5 +1,6 @@
 """Smoke tests for the FastAPI app — no Anthropic API calls required."""
 import importlib
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -61,9 +62,51 @@ def test_delete_missing_report(client):
     assert res.status_code == 404
 
 
-def test_cors_defaults_to_wildcard(client):
-    res = client.get("/api/reports", headers={"Origin": "https://example.com"})
-    assert res.headers["access-control-allow-origin"] == "*"
+def test_analyze_snyk_upload(client, monkeypatch):
+    from api import main as api_main
+    from spectra.models import AnalysisReport
+
+    report = AnalysisReport(
+        executive_summary="No significant risks.",
+        overall_risk_score=0,
+        risk_level="LOW",
+        scanner_type="Snyk Open Source",
+    )
+    captured = {}
+
+    def fake_analyze(content, model):
+        captured["content"] = content
+        return report, {}
+
+    monkeypatch.setattr(api_main, "analyze", fake_analyze)
+    scan = {
+        "ok": False,
+        "dependencyCount": 1,
+        "vulnerabilities": [{
+            "id": "SNYK-JS-EXAMPLE-123",
+            "severity": "high",
+            "packageName": "example-package",
+            "version": "1.0.0",
+        }],
+    }
+
+    res = client.post(
+        "/api/analyze",
+        data={"scanner": "snyk"},
+        files={"file": ("snyk.json", json.dumps(scan), "application/json")},
+    )
+
+    assert res.status_code == 200
+    assert "SNYK-JS-EXAMPLE-123" in captured["content"]
+
+
+def test_cors_defaults_to_local_frontend_origins(client):
+    allowed = client.get("/api/reports", headers={"Origin": "http://localhost:3000"})
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "access-control-allow-credentials" not in allowed.headers
+
+    denied = client.get("/api/reports", headers={"Origin": "https://example.com"})
+    assert "access-control-allow-origin" not in denied.headers
 
 
 def test_cors_restricts_to_configured_origins(monkeypatch):
@@ -75,6 +118,16 @@ def test_cors_restricts_to_configured_origins(monkeypatch):
 
     res = client.get("/api/reports", headers={"Origin": "https://allowed.example.com"})
     assert res.headers["access-control-allow-origin"] == "https://allowed.example.com"
+    assert "access-control-allow-credentials" not in res.headers
 
     res = client.get("/api/reports", headers={"Origin": "https://evil.example.com"})
     assert "access-control-allow-origin" not in res.headers
+
+
+def test_cors_rejects_wildcard_origin(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "*")
+
+    with pytest.raises(ValueError, match="explicit origins"):
+        from api import main as api_main
+
+        importlib.reload(api_main)

@@ -75,7 +75,7 @@ export default function UploadZone({ onAnalyze, isAnalyzing, error }: UploadZone
           </div>
           <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Analyze a Scan</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Upload output from Trivy, Semgrep, or any scanner to get an AI-powered security report.
+            Upload output from Trivy, Semgrep, Snyk, or any scanner to get an AI-powered security report.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export default function UploadZone({ onAnalyze, isAnalyzing, error }: UploadZone
             <label className="block text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">
               Scanner Format
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {SCANNER_FORMATS.map(({ value, label }) => (
                 <button
                   key={value}
@@ -200,7 +200,7 @@ export default function UploadZone({ onAnalyze, isAnalyzing, error }: UploadZone
 
         {/* Supported scanners hint */}
         <p className="mt-6 text-center text-xs text-slate-600">
-          Supports Trivy · Semgrep · Nessus · Burp Suite · Generic text
+          Supports Trivy · Semgrep · Snyk · Nessus · Burp Suite · Generic text
         </p>
       </div>
     </div>

@@ -31,18 +31,23 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# Comma-separated list of allowed origins, e.g. "https://app.example.com,https://admin.example.com"
-# Defaults to "*" for local development.
-_cors_origins = os.environ.get("CORS_ORIGINS", "*")
-_allow_origins = ["*"] if _cors_origins.strip() == "*" else [
+# Comma-separated list of allowed origins. Defaults to the local Vite dev server.
+_cors_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+)
+_allow_origins = [
     origin.strip() for origin in _cors_origins.split(",") if origin.strip()
 ]
+if "*" in _allow_origins:
+    raise ValueError("CORS_ORIGINS must list explicit origins; wildcard origins are not allowed.")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
 # In-memory report store — keyed by report ID
